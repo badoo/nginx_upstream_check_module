@@ -242,6 +242,7 @@ struct ngx_http_upstream_check_srv_conf_s {
         ngx_uint_t                           status_alive;
     } code;
 
+    ngx_str_t                                body;
     ngx_array_t                             *fastcgi_params;
 
     ngx_uint_t                               default_down;
@@ -464,6 +465,8 @@ static char *ngx_http_upstream_check_http_send(ngx_conf_t *cf,
     ngx_command_t *cmd, void *conf);
 static char *ngx_http_upstream_check_http_expect_alive(ngx_conf_t *cf,
     ngx_command_t *cmd, void *conf);
+static char *ngx_http_upstream_check_http_body(ngx_conf_t *cf,
+    ngx_command_t *cmd, void *conf);
 
 static char *ngx_http_upstream_check_fastcgi_params(ngx_conf_t *cf,
     ngx_command_t *cmd, void *conf);
@@ -551,6 +554,13 @@ static ngx_command_t  ngx_http_upstream_check_commands[] = {
     { ngx_string("check_http_expect_alive"),
       NGX_HTTP_UPS_CONF|NGX_CONF_1MORE,
       ngx_http_upstream_check_http_expect_alive,
+      0,
+      0,
+      NULL },
+
+    { ngx_string("check_http_body"),
+      NGX_HTTP_UPS_CONF|NGX_CONF_TAKE1,
+      ngx_http_upstream_check_http_body,
       0,
       0,
       NULL },
@@ -1983,7 +1993,8 @@ ngx_http_upstream_check_http_parse(ngx_http_upstream_check_peer_t *peer)
                        "http_parse: code_n: %ui, conf: %ui",
                        code_n, ucscf->code.status_alive);
 
-        if (code_n & ucscf->code.status_alive) {
+        if (code_n & ucscf->code.status_alive && (ucscf->body.len == 0 ||
+            ngx_strstr(ctx->recv.pos, ucscf->body.data) != NULL)) {
             return NGX_OK;
         } else {
             return NGX_ERROR;
@@ -3777,6 +3788,24 @@ ngx_http_upstream_check_http_send(ngx_conf_t *cf, ngx_command_t *cmd,
 
 
 static char *
+ngx_http_upstream_check_http_body(ngx_conf_t *cf, ngx_command_t *cmd,
+    void *conf)
+{
+    ngx_str_t                           *value;
+    ngx_http_upstream_check_srv_conf_t  *ucscf;
+
+    value = cf->args->elts;
+
+    ucscf = ngx_http_conf_get_module_srv_conf(cf,
+                                              ngx_http_upstream_check_module);
+
+    ucscf->body = value[1];
+
+    return NGX_CONF_OK;
+}
+
+
+static char *
 ngx_http_upstream_check_fastcgi_params(ngx_conf_t *cf, ngx_command_t *cmd,
     void *conf)
 {
@@ -4502,6 +4531,7 @@ ngx_http_upstream_check_find_shm_peer(ngx_http_upstream_check_peers_shm_t *p,
 {
     ngx_uint_t                          i;
     ngx_http_upstream_check_peer_shm_t *peer_shm;
+
 
     for (i = 0; i < p->number; i++) {
 
