@@ -242,7 +242,8 @@ struct ngx_http_upstream_check_srv_conf_s {
         ngx_uint_t                           status_alive;
     } code;
 
-    ngx_str_t                                body;
+    ngx_str_t                                expect_body;
+
     ngx_array_t                             *fastcgi_params;
 
     ngx_uint_t                               default_down;
@@ -465,7 +466,7 @@ static char *ngx_http_upstream_check_http_send(ngx_conf_t *cf,
     ngx_command_t *cmd, void *conf);
 static char *ngx_http_upstream_check_http_expect_alive(ngx_conf_t *cf,
     ngx_command_t *cmd, void *conf);
-static char *ngx_http_upstream_check_http_body(ngx_conf_t *cf,
+static char *ngx_http_upstream_check_http_expect_body(ngx_conf_t *cf,
     ngx_command_t *cmd, void *conf);
 
 static char *ngx_http_upstream_check_fastcgi_params(ngx_conf_t *cf,
@@ -558,9 +559,9 @@ static ngx_command_t  ngx_http_upstream_check_commands[] = {
       0,
       NULL },
 
-    { ngx_string("check_http_body"),
+    { ngx_string("check_http_expect_body"),
       NGX_HTTP_UPS_CONF|NGX_CONF_TAKE1,
-      ngx_http_upstream_check_http_body,
+      ngx_http_upstream_check_http_expect_body,
       0,
       0,
       NULL },
@@ -1950,11 +1951,13 @@ ngx_http_upstream_check_http_parse(ngx_http_upstream_check_peer_t *peer)
 {
     ngx_int_t                            rc;
     ngx_uint_t                           code, code_n;
+    ngx_str_t                            expect_body;
     ngx_http_upstream_check_ctx_t       *ctx;
     ngx_http_upstream_check_srv_conf_t  *ucscf;
 
     ucscf = peer->conf;
     ctx = peer->check_data;
+    expect_body = ucscf->expect_body;
 
     if ((ctx->recv.last - ctx->recv.pos) > 0) {
 
@@ -1993,8 +1996,8 @@ ngx_http_upstream_check_http_parse(ngx_http_upstream_check_peer_t *peer)
                        "http_parse: code_n: %ui, conf: %ui",
                        code_n, ucscf->code.status_alive);
 
-        if (code_n & ucscf->code.status_alive && (ucscf->body.len == 0 ||
-            ngx_strstr(ctx->recv.pos, ucscf->body.data) != NULL)) {
+        if (code_n & ucscf->code.status_alive && (expect_body.len == 0 ||
+            ngx_strstr(ctx->recv.pos, expect_body.data) != NULL)) {
             return NGX_OK;
         } else {
             return NGX_ERROR;
@@ -3788,7 +3791,7 @@ ngx_http_upstream_check_http_send(ngx_conf_t *cf, ngx_command_t *cmd,
 
 
 static char *
-ngx_http_upstream_check_http_body(ngx_conf_t *cf, ngx_command_t *cmd,
+ngx_http_upstream_check_http_expect_body(ngx_conf_t *cf, ngx_command_t *cmd,
     void *conf)
 {
     ngx_str_t                           *value;
@@ -3799,7 +3802,7 @@ ngx_http_upstream_check_http_body(ngx_conf_t *cf, ngx_command_t *cmd,
     ucscf = ngx_http_conf_get_module_srv_conf(cf,
                                               ngx_http_upstream_check_module);
 
-    ucscf->body = value[1];
+    ucscf->expect_body = value[1];
 
     return NGX_CONF_OK;
 }
