@@ -1996,8 +1996,11 @@ ngx_http_upstream_check_http_parse(ngx_http_upstream_check_peer_t *peer)
                        "http_parse: code_n: %ui, conf: %ui",
                        code_n, ucscf->code.status_alive);
 
-        if (code_n & ucscf->code.status_alive && (expect_body.len == 0 ||
-            ngx_strstr(ctx->recv.pos, expect_body.data) != NULL)) {
+        if (!(code_n & ucscf->code.status_alive)) {
+            return NGX_ERROR;
+        }
+
+        if ((expect_body.len == 0) || (ngx_strstrn(ctx->recv.pos, expect_body.data, expect_body.len) != NULL)) {
             return NGX_OK;
         } else {
             return NGX_ERROR;
