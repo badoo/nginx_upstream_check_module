@@ -4538,7 +4538,6 @@ ngx_http_upstream_check_find_shm_peer(ngx_http_upstream_check_peers_shm_t *p,
     ngx_uint_t                          i;
     ngx_http_upstream_check_peer_shm_t *peer_shm;
 
-
     for (i = 0; i < p->number; i++) {
 
         peer_shm = &p->peers[i];
